@@ -540,8 +540,11 @@ func (s *Silences) Set(sil *pb.Silence) (string, error) {
 		}
 	}
 	// If we got here it's either a new silence or a replacing one.
-	sil.Id = uuid.NewV4().String()
-
+	puuid,err := uuid.NewV4()
+	if err!=nil {
+		level.Info(s.logger).Log("msg", "uuid generate", "err", err)
+	}
+	sil.Id = puuid.String()
 	if sil.StartsAt.Before(now) {
 		sil.StartsAt = now
 	}

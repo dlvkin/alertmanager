@@ -1,6 +1,7 @@
 /data/
 /alertmanager
 /amtool
+/misconf
 *.yml
 *.yaml
 /.build
