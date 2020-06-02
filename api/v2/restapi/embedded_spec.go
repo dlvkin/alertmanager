@@ -209,6 +209,34 @@ func init() {
         }
       }
     },
+    "/flushConfig": {
+      "post": {
+        "description": "flush config in config",
+        "tags": [
+          "manager"
+        ],
+        "operationId": "flushconfig",
+        "parameters": [
+          {
+            "description": "The config to create",
+            "name": "config",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/postableConfig"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Create config response",
+            "schema": {
+              "$ref": "#/definitions/responseModel"
+            }
+          }
+        }
+      }
+    },
     "/receivers": {
       "get": {
         "description": "Get list of all receivers (name of notification integrations)",
@@ -674,6 +702,18 @@ func init() {
         "$ref": "#/definitions/postableAlert"
       }
     },
+    "postableConfig": {
+      "allOf": [
+        {
+          "type": "object",
+          "properties": {
+            "body": {
+              "type": "string"
+            }
+          }
+        }
+      ]
+    },
     "postableSilence": {
       "allOf": [
         {
@@ -696,6 +736,23 @@ func init() {
       ],
       "properties": {
         "name": {
+          "type": "string"
+        }
+      }
+    },
+    "responseModel": {
+      "type": "object",
+      "required": [
+        "code"
+      ],
+      "properties": {
+        "code": {
+          "type": "integer"
+        },
+        "data": {
+          "type": "object"
+        },
+        "message": {
           "type": "string"
         }
       }
@@ -1001,6 +1058,34 @@ func init() {
             "description": "Internal server error",
             "schema": {
               "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "/flushConfig": {
+      "post": {
+        "description": "flush config in config",
+        "tags": [
+          "manager"
+        ],
+        "operationId": "flushconfig",
+        "parameters": [
+          {
+            "description": "The config to create",
+            "name": "config",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/postableConfig"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Create config response",
+            "schema": {
+              "$ref": "#/definitions/responseModel"
             }
           }
         }
@@ -1483,6 +1568,18 @@ func init() {
         "$ref": "#/definitions/postableAlert"
       }
     },
+    "postableConfig": {
+      "allOf": [
+        {
+          "type": "object",
+          "properties": {
+            "body": {
+              "type": "string"
+            }
+          }
+        }
+      ]
+    },
     "postableSilence": {
       "allOf": [
         {
@@ -1505,6 +1602,23 @@ func init() {
       ],
       "properties": {
         "name": {
+          "type": "string"
+        }
+      }
+    },
+    "responseModel": {
+      "type": "object",
+      "required": [
+        "code"
+      ],
+      "properties": {
+        "code": {
+          "type": "integer"
+        },
+        "data": {
+          "type": "object"
+        },
+        "message": {
           "type": "string"
         }
       }

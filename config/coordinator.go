@@ -16,6 +16,9 @@ package config
 import (
 	"crypto/md5"
 	"encoding/binary"
+	"errors"
+	"io/ioutil"
+	"os"
 	"sync"
 	"time"
 
@@ -144,7 +147,55 @@ func (c *Coordinator) Reload() error {
 
 	return nil
 }
+func fileExist(path string) bool {
+	_, err := os.Lstat(path)
+	return !os.IsNotExist(err)
+}
 
+// Reload triggers a configuration reload from file and notifies all
+// configuration change subscribers.
+func (c *Coordinator) ReloadConfig(conf string) error {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+	if !fileExist(c.configFilePath) {
+		return errors.New("目标文件不存在")
+	}
+	err := ioutil.WriteFile(c.configFilePath,[]byte(conf),0777)
+	if err != nil {
+		level.Error(c.logger).Log(
+			"msg", "write configuration file failed",
+			"file", c.configFilePath,
+			"err", err,
+		)
+		return err
+	}
+	level.Info(c.logger).Log(
+		"msg", "Loading configuration file",
+		"file", c.configFilePath,
+	)
+	if err := c.loadFromFile(); err != nil {
+		level.Error(c.logger).Log(
+			"msg", "Loading configuration file failed",
+			"file", c.configFilePath,
+			"err", err,
+		)
+		return err
+	}
+	level.Info(c.logger).Log(
+		"msg", "Completed loading of configuration file",
+		"file", c.configFilePath,
+	)
+	if err := c.notifySubscribers(); err != nil {
+		c.logger.Log(
+			"msg", "one or more config change subscribers failed to apply new config",
+			"file", c.configFilePath,
+			"err", err,
+		)
+		return err
+	}
+
+	return nil
+}
 func md5HashAsMetricValue(data []byte) float64 {
 	sum := md5.Sum(data)
 	// We only want 48 bits as a float64 only has a 53 bit mantissa.

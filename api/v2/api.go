@@ -38,6 +38,7 @@ import (
 	alert_ops "github.com/prometheus/alertmanager/api/v2/restapi/operations/alert"
 	alertgroup_ops "github.com/prometheus/alertmanager/api/v2/restapi/operations/alertgroup"
 	general_ops "github.com/prometheus/alertmanager/api/v2/restapi/operations/general"
+	config_ops "github.com/prometheus/alertmanager/api/v2/restapi/operations/manager"
 	receiver_ops "github.com/prometheus/alertmanager/api/v2/restapi/operations/receiver"
 	silence_ops "github.com/prometheus/alertmanager/api/v2/restapi/operations/silence"
 	"github.com/prometheus/alertmanager/cluster"
@@ -71,6 +72,7 @@ type API struct {
 	m      *metrics.Alerts
 
 	Handler http.Handler
+	loadCh chan string
 }
 
 type groupsFn func(func(*dispatch.Route) bool, func(*types.Alert, time.Time) bool) (dispatch.AlertGroups, map[prometheus_model.Fingerprint][]string)
@@ -86,6 +88,7 @@ func NewAPI(
 	peer *cluster.Peer,
 	l log.Logger,
 	r prometheus.Registerer,
+	ReloadCh chan string,
 ) (*API, error) {
 	api := API{
 		alerts:         alerts,
@@ -96,6 +99,7 @@ func NewAPI(
 		logger:         l,
 		m:              metrics.NewAlerts("v2", r),
 		uptime:         time.Now(),
+		loadCh: ReloadCh,
 	}
 
 	// load embedded swagger file
@@ -123,7 +127,7 @@ func NewAPI(
 	openAPI.SilenceGetSilenceHandler = silence_ops.GetSilenceHandlerFunc(api.getSilenceHandler)
 	openAPI.SilenceGetSilencesHandler = silence_ops.GetSilencesHandlerFunc(api.getSilencesHandler)
 	openAPI.SilencePostSilencesHandler = silence_ops.PostSilencesHandlerFunc(api.postSilencesHandler)
-
+	openAPI.ManagerFlushconfigHandler = config_ops.FlushconfigHandlerFunc(api.postConfigHandler)
 	openAPI.Logger = func(s string, i ...interface{}) { level.Error(api.logger).Log(i...) }
 
 	handleCORS := cors.Default().Handler
@@ -748,6 +752,23 @@ func (api *API) postSilencesHandler(params silence_ops.PostSilencesParams) middl
 		SilenceID: sid,
 	})
 }
+
+func (api *API) postConfigHandler(params config_ops.FlushconfigParams) middleware.Responder {
+	_, err := config.Load(params.Config.Body);
+	if err != nil {
+		level.Error(api.logger).Log("msg", "not suite for config yaml formate ", "err", err)
+		return config_ops.NewFlushconfigOK().WithPayload(&open_api_models.ResponseModel {
+			Code: create(500),
+			Message: fmt.Sprintf("failed to convert API config to internal yaml: %v", err.Error()),
+		})
+	}
+	api.loadCh <- params.Config.Body
+	return config_ops.NewFlushconfigOK().WithPayload(&open_api_models.ResponseModel {
+		Code: create(200),
+		Message: "ok",
+	})
+}
+func create(x int64) *int64 {return &x}
 
 func postableSilenceToProto(s *open_api_models.PostableSilence) (*silencepb.Silence, error) {
 	sil := &silencepb.Silence{

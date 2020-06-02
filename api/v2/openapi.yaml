@@ -195,6 +195,24 @@ paths:
           $ref: '#/responses/InternalServerError'
         '400':
           $ref: '#/responses/BadRequest'
+  /flushConfig:
+    post:
+       tags:
+         - manager
+       operationId: flushconfig
+       description: flush config in config
+       parameters:
+         - in: body
+           name: config
+           description: The config to create
+           required: true
+           schema:
+             $ref: '#/definitions/postableConfig'
+       responses:
+         '200':
+          description: Create config response
+          schema:
+            $ref: '#/definitions/responseModel'
   /alerts/groups:
     get:
       tags:
@@ -312,6 +330,17 @@ definitions:
       - buildUser
       - buildDate
       - goVersion
+  responseModel:
+    type: object
+    properties:
+      code:
+        type: integer
+      message:
+        type: string
+      data:
+        type: object
+    required:
+      - code
   peerStatus:
     type: object
     properties:
@@ -446,6 +475,12 @@ definitions:
     type: array
     items:
       $ref: '#/definitions/postableAlert'
+  postableConfig:
+    allOf:
+      - type: object
+        properties:
+          body:
+            type: string
   postableAlert:
     allOf:
       - type: object

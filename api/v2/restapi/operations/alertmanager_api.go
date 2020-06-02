@@ -36,6 +36,7 @@ import (
 	"github.com/prometheus/alertmanager/api/v2/restapi/operations/alert"
 	"github.com/prometheus/alertmanager/api/v2/restapi/operations/alertgroup"
 	"github.com/prometheus/alertmanager/api/v2/restapi/operations/general"
+	"github.com/prometheus/alertmanager/api/v2/restapi/operations/manager"
 	"github.com/prometheus/alertmanager/api/v2/restapi/operations/receiver"
 	"github.com/prometheus/alertmanager/api/v2/restapi/operations/silence"
 )
@@ -59,6 +60,9 @@ func NewAlertmanagerAPI(spec *loads.Document) *AlertmanagerAPI {
 		JSONProducer:        runtime.JSONProducer(),
 		SilenceDeleteSilenceHandler: silence.DeleteSilenceHandlerFunc(func(params silence.DeleteSilenceParams) middleware.Responder {
 			return middleware.NotImplemented("operation SilenceDeleteSilence has not yet been implemented")
+		}),
+		ManagerFlushconfigHandler: manager.FlushconfigHandlerFunc(func(params manager.FlushconfigParams) middleware.Responder {
+			return middleware.NotImplemented("operation ManagerFlushconfig has not yet been implemented")
 		}),
 		AlertgroupGetAlertGroupsHandler: alertgroup.GetAlertGroupsHandlerFunc(func(params alertgroup.GetAlertGroupsParams) middleware.Responder {
 			return middleware.NotImplemented("operation AlertgroupGetAlertGroups has not yet been implemented")
@@ -117,6 +121,8 @@ type AlertmanagerAPI struct {
 
 	// SilenceDeleteSilenceHandler sets the operation handler for the delete silence operation
 	SilenceDeleteSilenceHandler silence.DeleteSilenceHandler
+	// ManagerFlushconfigHandler sets the operation handler for the flushconfig operation
+	ManagerFlushconfigHandler manager.FlushconfigHandler
 	// AlertgroupGetAlertGroupsHandler sets the operation handler for the get alert groups operation
 	AlertgroupGetAlertGroupsHandler alertgroup.GetAlertGroupsHandler
 	// AlertGetAlertsHandler sets the operation handler for the get alerts operation
@@ -200,6 +206,10 @@ func (o *AlertmanagerAPI) Validate() error {
 		unregistered = append(unregistered, "silence.DeleteSilenceHandler")
 	}
 
+	if o.ManagerFlushconfigHandler == nil {
+		unregistered = append(unregistered, "manager.FlushconfigHandler")
+	}
+
 	if o.AlertgroupGetAlertGroupsHandler == nil {
 		unregistered = append(unregistered, "alertgroup.GetAlertGroupsHandler")
 	}
@@ -269,7 +279,6 @@ func (o *AlertmanagerAPI) ConsumersFor(mediaTypes []string) map[string]runtime.C
 			result["application/json"] = o.JSONConsumer
 
 		}
-
 		if c, ok := o.customConsumers[mt]; ok {
 			result[mt] = c
 		}
@@ -334,6 +343,11 @@ func (o *AlertmanagerAPI) initHandlerCache() {
 		o.handlers["DELETE"] = make(map[string]http.Handler)
 	}
 	o.handlers["DELETE"]["/silence/{silenceID}"] = silence.NewDeleteSilence(o.context, o.SilenceDeleteSilenceHandler)
+
+	if o.handlers["POST"] == nil {
+		o.handlers["POST"] = make(map[string]http.Handler)
+	}
+	o.handlers["POST"]["/flushConfig"] = manager.NewFlushconfig(o.context, o.ManagerFlushconfigHandler)
 
 	if o.handlers["GET"] == nil {
 		o.handlers["GET"] = make(map[string]http.Handler)

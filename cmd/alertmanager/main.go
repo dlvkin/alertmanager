@@ -334,7 +334,7 @@ func run() int {
 	groupFn := func(routeFilter func(*dispatch.Route) bool, alertFilter func(*types.Alert, time.Time) bool) (dispatch.AlertGroups, map[model.Fingerprint][]string) {
 		return disp.Groups(routeFilter, alertFilter)
 	}
-
+	confReload := make(chan string)
 	api, err := api.New(api.Options{
 		Alerts:      alerts,
 		Silences:    silences,
@@ -345,6 +345,7 @@ func run() int {
 		Logger:      log.With(logger, "component", "api"),
 		Registry:    prometheus.DefaultRegisterer,
 		GroupFunc:   groupFn,
+		ReloadCh: confReload,
 	})
 
 	if err != nil {
@@ -475,14 +476,10 @@ func run() int {
 	}
 
 	webReload := make(chan chan error)
-
 	ui.Register(router, webReload, logger)
-
 	mux := api.Register(router, *routePrefix)
-
 	srv := http.Server{Addr: *listenAddress, Handler: mux}
 	srvc := make(chan struct{})
-
 	go func() {
 		level.Info(logger).Log("msg", "Listening", "address", *listenAddress)
 		if err := srv.ListenAndServe(); err != http.ErrServerClosed {
@@ -519,6 +516,8 @@ func run() int {
 				_ = configCoordinator.Reload()
 			case errc := <-webReload:
 				errc <- configCoordinator.Reload()
+			case ss :=<- confReload:
+				configCoordinator.ReloadConfig(ss)
 			}
 		}
 	}()

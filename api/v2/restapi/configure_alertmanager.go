@@ -28,6 +28,7 @@ import (
 	"github.com/prometheus/alertmanager/api/v2/restapi/operations/alert"
 	"github.com/prometheus/alertmanager/api/v2/restapi/operations/alertgroup"
 	"github.com/prometheus/alertmanager/api/v2/restapi/operations/general"
+	"github.com/prometheus/alertmanager/api/v2/restapi/operations/manager"
 	"github.com/prometheus/alertmanager/api/v2/restapi/operations/receiver"
 	"github.com/prometheus/alertmanager/api/v2/restapi/operations/silence"
 )
@@ -55,6 +56,11 @@ func configureAPI(api *operations.AlertmanagerAPI) http.Handler {
 	if api.SilenceDeleteSilenceHandler == nil {
 		api.SilenceDeleteSilenceHandler = silence.DeleteSilenceHandlerFunc(func(params silence.DeleteSilenceParams) middleware.Responder {
 			return middleware.NotImplemented("operation silence.DeleteSilence has not yet been implemented")
+		})
+	}
+	if api.ManagerFlushconfigHandler == nil {
+		api.ManagerFlushconfigHandler = manager.FlushconfigHandlerFunc(func(params manager.FlushconfigParams) middleware.Responder {
+			return middleware.NotImplemented("operation manager.Flushconfig has not yet been implemented")
 		})
 	}
 	if api.AlertgroupGetAlertGroupsHandler == nil {

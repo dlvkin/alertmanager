@@ -74,6 +74,8 @@ type Options struct {
 	// according to the current active configuration. Alerts returned are
 	// filtered by the arguments provided to the function.
 	GroupFunc func(func(*dispatch.Route) bool, func(*types.Alert, time.Time) bool) (dispatch.AlertGroups, map[model.Fingerprint][]string)
+     // reload ch
+	ReloadCh chan string
 }
 
 func (o Options) validate() error {
@@ -127,6 +129,7 @@ func New(opts Options) (*API, error) {
 		opts.Peer,
 		log.With(l, "version", "v2"),
 		opts.Registry,
+		opts.ReloadCh,
 	)
 
 	if err != nil {

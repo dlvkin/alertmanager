@@ -94,7 +94,8 @@ endif
 
 PREFIX                  ?= $(shell pwd)
 BIN_DIR                 ?= $(shell pwd)
-DOCKER_IMAGE_TAG        ?= $(subst /,-,$(shell git rev-parse --abbrev-ref HEAD))
+#DOCKER_IMAGE_TAG        ?= $(subst /,-,$(shell git rev-parse --abbrev-ref HEAD))
+DOCKER_IMAGE_TAG        ?= $(subst /,-,$(shell git rev-parse --short HEAD))
 DOCKERFILE_PATH         ?= ./Dockerfile
 DOCKERBUILD_CONTEXT     ?= ./
 DOCKER_REPO             ?= prom
@@ -248,7 +249,8 @@ $(PUBLISH_DOCKER_ARCHS): common-docker-publish-%:
 .PHONY: common-docker-tag-latest $(TAG_DOCKER_ARCHS)
 common-docker-tag-latest: $(TAG_DOCKER_ARCHS)
 $(TAG_DOCKER_ARCHS): common-docker-tag-latest-%:
-	docker tag "$(DOCKER_REPO)/$(DOCKER_IMAGE_NAME)-linux-$*:$(DOCKER_IMAGE_TAG)" "$(DOCKER_REPO)/$(DOCKER_IMAGE_NAME)-linux-$*:latest"
+   #"$(DOCKER_REPO)/$(DOCKER_IMAGE_NAME)-linux-$*:$(DOCKER_IMAGE_TAG)"
+	docker tag "$(DOCKER_REPO)/"$(DOCKER_REPO)/$(DOCKER_IMAGE_NAME)-linux-$*:latest"
 
 .PHONY: common-docker-manifest
 common-docker-manifest:
