@@ -1,6 +1,6 @@
 ARG ARCH="amd64"
 ARG OS="linux"
-FROM quay.io/prometheus/busybox-${OS}-${ARCH}:latest
+FROM 192.168.1.202/linuxamd64/alpine-java8:20201125
 LABEL maintainer="hunterfox<butteflywangqq.com>"
 
 ARG ARCH="amd64"

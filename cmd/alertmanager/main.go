@@ -492,7 +492,7 @@ func run() int {
 			}
 		}()
 	}()
-	ConfigSDkClient := nacos.NewNacosclient(*nacosDir, log.With(logger, "component", "nacos"),)
+	ConfigSDkClient := nacos.NewNacosClient(*nacosDir, log.With(logger, "component", "nacos"),)
 	err = ConfigSDkClient.LoadGuideConfig()
 	if err != nil {
 		level.Error(logger).Log("msg", "LoadGuideConfig", "err", err)

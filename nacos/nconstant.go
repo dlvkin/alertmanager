@@ -5,6 +5,7 @@ import (
 	"net"
 	"os"
 	"sort"
+	"strings"
 )
 
 /*
@@ -45,21 +46,34 @@ func GetMatchLocalIP(host string) string {
 	sort.Strings(addlist)
 	return addlist[0]
 }
-//GetLocalIP getlocal ip
+//GetLocalIP getLocal ip address
 func GetLocalIP() string {
-	addrs, err := net.InterfaceAddrs()
+	addressPool, err := net.InterfaceAddrs()
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}
-	for _, address := range addrs {
-		// 检查ip地址判断是否回环地址
-		if ipnet, ok := address.(*net.IPNet); ok && !ipnet.IP.IsLoopback() {
-			if ipnet.IP.To4() != nil {
-				fmt.Println(ipnet.IP.String())
-				return ipnet.IP.String()
+	for _, address := range addressPool {
+		if ipNet, ok := address.(*net.IPNet); ok && !ipNet.IP.IsLoopback() {
+			if ipNet.IP.To4() != nil {
+				fmt.Println(ipNet.IP.String())
+				return ipNet.IP.String()
 			}
 		}
 	}
-	return ""
+	return GetPublicIP()
+}
+// GetPublicIP
+func  GetPublicIP() string {
+	var (
+		err  error
+		conn net.Conn
+	)
+	if conn, err = net.Dial("udp", "8.8.8.8:80"); err != nil {
+		return "127.0.0.1"
+	}
+	defer conn.Close()
+	localAddr := conn.LocalAddr().String()
+	idx := strings.LastIndex(localAddr, ":")
+	return localAddr[0:idx]
 }

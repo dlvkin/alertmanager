@@ -31,8 +31,8 @@ type nacosConfig struct {
 	AccessAddress string                  `yaml:"AccessAddress"`
 }
 
-// Nacosclient nacos client
-type Nacosclient struct {
+// NacosClient nacos client
+type NacosClient struct {
 	mx           sync.Mutex
 	config       nacosConfig
 	LocalHost    string
@@ -43,9 +43,9 @@ type Nacosclient struct {
 	configClient config_client.IConfigClient
 }
 
-//NewNacosclient instance object
-func NewNacosclient(homeDir string,logging log.Logger) *Nacosclient {
-	client := &Nacosclient{}
+//NewNacosClient instance object
+func NewNacosClient(homeDir string,logging log.Logger) *NacosClient {
+	client := &NacosClient{}
 	client.nacosDir = homeDir
 	if client.nacosDir == "" {
 		client.nacosDir, _ = os.Getwd()
@@ -61,58 +61,58 @@ func NewNacosclient(homeDir string,logging log.Logger) *Nacosclient {
 }
 
 // LoadGuideConfig load from server config center
-func (sdkclient *Nacosclient) LoadGuideConfig() error {
-	config := path.Join(sdkclient.nacosDir,"nacos.yml")
+func (sdkClient *NacosClient) LoadGuideConfig() error {
+	config := path.Join(sdkClient.nacosDir,"nacos.yml")
 	err,readContent := ConfigInstance().ReadLocationConfig(config)
 	if err != nil {
 		level.Error(logger).Log("msg", "LoadGuideConfig", "err", err)
 		return err
 	}
-	err = yaml.Unmarshal([]byte(readContent), &sdkclient.config)
+	err = yaml.Unmarshal([]byte(readContent), &sdkClient.config)
 	if err != nil {
 		level.Error(logger).Log("msg", "LoadConfig", "err", err)
 		return err
 	}
 	// 处理地址访问
-	url := strings.Split(sdkclient.config.AccessAddress,":")
+	url := strings.Split(sdkClient.config.AccessAddress,":")
 	if len(url) < 2 {
-		return errors.New(sdkclient.config.AccessAddress+"nacos url is not match http URL")
+		return errors.New(sdkClient.config.AccessAddress+"nacos url is not match http URL")
 	}
-	if len(sdkclient.config.ServerConfig)< 1 {
-		sdkclient.config.ServerConfig[0]= constant.ServerConfig{ContextPath:"/nacos"}
+	if len(sdkClient.config.ServerConfig)< 1 {
+		sdkClient.config.ServerConfig[0]= constant.ServerConfig{ContextPath:"/nacos"}
 	}
-	sdkclient.config.ServerConfig[0].IpAddr = url[0]
+	sdkClient.config.ServerConfig[0].IpAddr = url[0]
 	port,_:= strconv.ParseUint(url[1],10, 64)
-	sdkclient.config.ServerConfig[0].Port = port
-	sdkclient.LocalHost = GetMatchLocalIP(sdkclient.config.LocalHost)
+	sdkClient.config.ServerConfig[0].Port = port
+	sdkClient.LocalHost = GetMatchLocalIP(sdkClient.config.LocalHost)
 	return nil
 }
 
 //RemoteDiscoverConfig  load from server config center
-func (sdkclient *Nacosclient) RemoteDiscoverConfig() error {
-	client := sdkclient.getConfigClient()
+func (sdkClient *NacosClient) RemoteDiscoverConfig() error {
+	client := sdkClient.getConfigClient()
 	if client == nil {
 		level.Error(logger).Log("msg", "config client is nil")
 		return errors.New("config provider is fail")
 	}
 	dsconfig := ConfigInstance()
 	content, err := client.GetConfig(vo.ConfigParam{
-		DataId: sdkclient.config.DataID,
-		Group:  sdkclient.config.Group})
+		DataId: sdkClient.config.DataID,
+		Group:  sdkClient.config.Group})
 	if err != nil {
-		level.Error(logger).Log("DataId: %s,Group: %s, NamespaceId: %s,error $s", sdkclient.config.DataID, sdkclient.config.Group, sdkclient.config.ClientConfig.NamespaceId, err.Error())
+		level.Error(logger).Log("DataId: %s,Group: %s, NamespaceId: %s,error $s", sdkClient.config.DataID, sdkClient.config.Group, sdkClient.config.ClientConfig.NamespaceId, err.Error())
 		return err
 	}
 	r := strings.NewReader(content)
 	err = dsconfig.Config.ReadConfig(r)
 	if err != nil {
-		level.Error(logger).Log("read config :%s, error: %s", sdkclient.config.ServiceName, err.Error())
+		level.Error(logger).Log("read config :%s, error: %s", sdkClient.config.ServiceName, err.Error())
 		fmt.Println(err.Error())
 		return err
 	}
 	_ = client.ListenConfig(vo.ConfigParam{
-		DataId: sdkclient.config.DataID,
-		Group:  sdkclient.config.Group,
+		DataId: sdkClient.config.DataID,
+		Group:  sdkClient.config.Group,
 		OnChange: func(namespace, group, dataId, data string) {
 			level.Info(logger).Log("config altermanger.yaml has changed in nacos")
 			r := strings.NewReader(content)
@@ -123,42 +123,42 @@ func (sdkclient *Nacosclient) RemoteDiscoverConfig() error {
 }
 
 // RegisterService register local instance with service
-func (sdkclient *Nacosclient) RegisterService(listenPort string) {
-	if sdkclient.isNameStart {
+func (sdkClient *NacosClient) RegisterService(listenPort string) {
+	if sdkClient.isNameStart {
 		return
 	}
-	sdkclient.Port = listenPort
+	sdkClient.Port = listenPort
 	port, err := strconv.ParseUint(listenPort, 10, 64)
-	sdkclient.nameClient = sdkclient.getNamingClient()
-	if sdkclient.nameClient == nil {
+	sdkClient.nameClient = sdkClient.getNamingClient()
+	if sdkClient.nameClient == nil {
 		level.Error(logger).Log("namingClient is nil")
 		return
 	}
-	success, err := sdkclient.nameClient.RegisterInstance(vo.RegisterInstanceParam{
-		Ip:          sdkclient.LocalHost,
+	success, err := sdkClient.nameClient.RegisterInstance(vo.RegisterInstanceParam{
+		Ip:          sdkClient.LocalHost,
 		Port:        port,
-		ServiceName: sdkclient.config.ServiceName,
+		ServiceName: sdkClient.config.ServiceName,
 		Weight:      1,
-		ClusterName: sdkclient.config.ClusterName,
+		ClusterName: sdkClient.config.ClusterName,
 		Enable:      true,
 		Healthy:     true,
 		Ephemeral:   true,
 		Metadata:    map[string]string{},
 	})
 	if err != nil {
-		level.Error(logger).Log("register service: %s, error: %s", sdkclient.config.ServiceName, err.Error())
+		level.Error(logger).Log("register service: %s, error: %s", sdkClient.config.ServiceName, err.Error())
 	}
-	sdkclient.isNameStart = true
+	sdkClient.isNameStart = true
 	level.Info(logger).Log("register result: ", success)
 }
 
 //GetService select other service
-func (sdkclient *Nacosclient) GetService(serviceName string) string {
-	if sdkclient.nameClient == nil {
+func (sdkClient *NacosClient) GetService(serviceName string) string {
+	if sdkClient.nameClient == nil {
 		level.Error(logger).Log("namingClient is nil")
 		return ""
 	}
-	svr, err := sdkclient.nameClient.SelectOneHealthyInstance(vo.SelectOneHealthInstanceParam{
+	svr, err := sdkClient.nameClient.SelectOneHealthyInstance(vo.SelectOneHealthInstanceParam{
 		ServiceName: serviceName,
 	})
 
@@ -174,8 +174,8 @@ func (sdkclient *Nacosclient) GetService(serviceName string) string {
 }
 
 //suscribeService subsribe other service
-func (sdkclient *Nacosclient) suscribeService(name string) {
-	client := sdkclient.nameClient
+func (sdkClient *NacosClient) suscribeService(name string) {
+	client := sdkClient.nameClient
 	if client == nil {
 		level.Error(logger).Log("namingClient is nil")
 		return
@@ -189,55 +189,55 @@ func (sdkclient *Nacosclient) suscribeService(name string) {
 }
 
 //
-func (sdkclient *Nacosclient) getConfigClient() config_client.IConfigClient {
-	sdkclient.mx.Lock()
-	defer sdkclient.mx.Unlock()
-	if sdkclient.configClient == nil {
+func (sdkClient *NacosClient) getConfigClient() config_client.IConfigClient {
+	sdkClient.mx.Lock()
+	defer sdkClient.mx.Unlock()
+	if sdkClient.configClient == nil {
 		client, err := clients.CreateConfigClient(map[string]interface{}{
-			"serverConfigs": sdkclient.config.ServerConfig,
-			"clientConfig":  sdkclient.config.ClientConfig,
+			"serverConfigs": sdkClient.config.ServerConfig,
+			"clientConfig":  sdkClient.config.ClientConfig,
 		})
 		if err != nil {
 			level.Error(logger).Log("connect configClient error: ", err)
 		}
-		sdkclient.configClient = client
+		sdkClient.configClient = client
 	}
-	return sdkclient.configClient
+	return sdkClient.configClient
 }
 
-func (sdkclient *Nacosclient) getNamingClient() naming_client.INamingClient {
-	sdkclient.mx.Lock()
-	defer sdkclient.mx.Unlock()
-	if sdkclient.nameClient == nil {
+func (sdkClient *NacosClient) getNamingClient() naming_client.INamingClient {
+	sdkClient.mx.Lock()
+	defer sdkClient.mx.Unlock()
+	if sdkClient.nameClient == nil {
 		client, err := clients.CreateNamingClient(map[string]interface{}{
-			"serverConfigs": sdkclient.config.ServerConfig,
-			"clientConfig":  sdkclient.config.ClientConfig,
+			"serverConfigs": sdkClient.config.ServerConfig,
+			"clientConfig":  sdkClient.config.ClientConfig,
 		})
 		if err != nil {
 			level.Error(logger).Log("connect nameClient error: ", err)
 		}
-		sdkclient.nameClient = client
+		sdkClient.nameClient = client
 	}
-	return sdkclient.nameClient
+	return sdkClient.nameClient
 }
 
 //GetNacosIP get local ip address
-func (sdkclient *Nacosclient) GetNacosIP() string {
-	if sdkclient.config.ServerConfig != nil {
-		return sdkclient.config.ServerConfig[0].IpAddr
+func (sdkClient *NacosClient) GetNacosIP() string {
+	if sdkClient.config.ServerConfig != nil {
+		return sdkClient.config.ServerConfig[0].IpAddr
 	}
 	return ""
 }
 
 //GetNacosPort get local port
-func (sdkclient *Nacosclient) GetNacosPort() string {
-	if sdkclient.config.ServerConfig != nil && len(sdkclient.config.ServerConfig) >= 0 {
-		return fmt.Sprintf("%d", sdkclient.config.ServerConfig[0].Port)
+func (sdkClient *NacosClient) GetNacosPort() string {
+	if sdkClient.config.ServerConfig != nil && len(sdkClient.config.ServerConfig) >= 0 {
+		return fmt.Sprintf("%d", sdkClient.config.ServerConfig[0].Port)
 	}
 	return ""
 }
 
 // GetNacosNamespaceID get local namespace
-func (sdkclient *Nacosclient) GetNacosNamespaceID() string {
-	return sdkclient.config.ClientConfig.NamespaceId
+func (sdkClient *NacosClient) GetNacosNamespaceID() string {
+	return sdkClient.config.ClientConfig.NamespaceId
 }
